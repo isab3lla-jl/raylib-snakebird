@@ -23,7 +23,7 @@
 *   Copyright (c) 2013-2024 Ramon Santamaria (@raysan5)
 *
 ********************************************************************************************/
-#include <raylib.h>
+#include "raylib.h"
 #include <stdlib.h> 
 #include <stdio.h> 
 
@@ -77,18 +77,18 @@ static bool exitReached = false;
 
 static bool gameOver = false;
 static bool pause = false;
-static bool allowMove = false; 
+static bool allowMove = false;  
 
 const char* MAP[] = {
     "#########################",
     "#                       #",
     "#                       #",
     "#                       #",
-    "#      F                #",
-    "#     #####             #", 
-    "#     #   #   #####     #",
-    "#             # # #     #",
-    "#       #               #",
+    "#                       #",
+    "#     #####     F       #", 
+    "#     #   # F #####     #",
+    "#           F # # #     #",
+    "#       #       F       #",
     "#    #######    #       #",
     "#       #     #####     #",
     "#       #    E  #       #",

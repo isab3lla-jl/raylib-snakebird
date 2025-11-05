@@ -11,6 +11,7 @@
 			"blocks.h": "c",
 			"stdio.h": "c",
 			"*.m": "c"
-		}
+		},
+		"terminal.integrated.sendKeybindingsToShell": true
 	}
 }
