@@ -41,14 +41,13 @@
 //----------------------------------------------------------------------------------
 
 typedef struct Segment {
-    Vector2 position; // Position in TILE coordinates (0-24, 0-13)
-    Vector2 size;     // Size in PIXELS (32x32)
+    Vector2 position; 
+    Vector2 size;     
 } Segment;
 
 typedef struct Snakebird {
     Segment body[MAX_BODY];
     int length;
-    Vector2 speed;    // Current movement direction in tiles/frame
     Color color;
 } Snakebird;
 
@@ -137,7 +136,6 @@ void InitGame(void)
     exitReached = false; 
     allowMove = true;
     player.length = 1;
-    player.speed = (Vector2){ 1, 0 }; 
     player.color = DARKGREEN;
     
     player.body[0].position = (Vector2){ GRID_WIDTH/2, GRID_HEIGHT/2 };
