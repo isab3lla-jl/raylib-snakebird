@@ -32,7 +32,8 @@
 //----------------------------------------------------------------------------------
 #define TILE_SIZE 32
 #define MAX_BODY 50
-#define MAX_PLATFORMS 250
+#define MAX_PLATFORMS 300
+#define MAX_FOOD 10
 #define GRID_WIDTH 25
 #define GRID_HEIGHT 14
 
@@ -69,7 +70,8 @@ static const int screenWidth = GRID_WIDTH * TILE_SIZE;
 static const int screenHeight = GRID_HEIGHT * TILE_SIZE;
 
 static Snakebird player = { 0 };
-static Food food = { 0 };
+static Food food[MAX_FOOD] = { 0 };
+static int foodCount = 0;
 static Platform platforms[MAX_PLATFORMS] = { 0 };
 static int platformCount = 0;
 static Vector2 exitPosition = { 0, 0 }; 
@@ -95,23 +97,6 @@ const char* MAP[] = {
     "#    #              #   #", 
     "#########################"
 };
-
-/*const char* MAP[] = {
-    "#########################",
-    "#                       #",
-    "#                       #",
-    "#                       #",
-    "#                       #",
-    "#                       #", 
-    "#                       #",
-    "#                       #",
-    "#                       #",
-    "#   ########            #",
-    "#                       #",
-    "#        ##     ##      #",
-    "#     F      ##       E #", 
-    "#########################"
-};*/
 
 //------------------------------------------------------------------------------------
 // Module Functions Declaration (local)
@@ -155,10 +140,11 @@ void InitGame(void)
     player.length = 1;
     player.color = DARKGREEN;
     
-    player.body[0].position = (Vector2){ GRID_WIDTH/2, GRID_HEIGHT/2 };
+    player.body[0].position = (Vector2){TILE_SIZE * 8, TILE_SIZE * 6};
     player.body[0].size = (Vector2){ TILE_SIZE, TILE_SIZE };
 
     platformCount = 0;
+    foodCount = 0;
     for (int y = 0; y < GRID_HEIGHT; y++) {
         for (int x = 0; x < GRID_WIDTH; x++) {
             if (MAP[y][x] == '#') {
@@ -166,9 +152,10 @@ void InitGame(void)
                 platformCount++;
             }
             else if (MAP[y][x] == 'F') {
-                food.position = (Vector2){(float)x, (float)y};
-                food.size = (Vector2){ TILE_SIZE, TILE_SIZE };
-                food.active = true; 
+                food[foodCount].position = (Vector2){(float)x, (float)y};
+                food[foodCount].size = (Vector2){ TILE_SIZE, TILE_SIZE };
+                food[foodCount].active = true; 
+                foodCount++;
             }
             else if (MAP[y][x] == 'E') {
                 exitPosition = (Vector2){(float)x, (float)y};
@@ -188,13 +175,15 @@ void DrawGame(void)
     }
 
     //Draw Food
-    if (food.active)
-    {
-         Vector2 drawPos = {
-            food.position.x * TILE_SIZE,
-            food.position.y * TILE_SIZE
-        };
-        DrawRectangleV(drawPos, food.size, YELLOW);
+    for (int i = 0; i < foodCount; i++){
+        if (food[i].active)
+        {
+             Vector2 drawPos = {
+                food[i].position.x * TILE_SIZE,
+                food[i].position.y * TILE_SIZE
+            };
+            DrawRectangleV(drawPos, food[i].size, YELLOW);
+        }
     }
 
     //Draw exit (inactive, active pending)
