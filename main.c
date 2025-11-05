@@ -139,8 +139,10 @@ void InitGame(void)
     allowMove = true;
     player.length = 1;
     player.color = DARKGREEN;
-    
-    player.body[0].position = (Vector2){TILE_SIZE * 8, TILE_SIZE * 6};
+
+    int startX = 7;
+    int startY = 4;
+    player.body[0].position = (Vector2){(float)startX, (float)startY};
     player.body[0].size = (Vector2){ TILE_SIZE, TILE_SIZE };
 
     platformCount = 0;
