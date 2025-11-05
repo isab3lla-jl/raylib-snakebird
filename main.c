@@ -104,8 +104,8 @@ const char* MAP[] = {
 static void InitGame(void);
 //static void UpdateGame(void);
 static void DrawGame(void);
-//static bool CheckCollisionWithPlatforms(Vector2 tilePos);
-//static bool CheckCollisionWithBody(Vector2 tilePos);
+static bool IsSolid(Vector2 tilePos);
+static bool CheckCollisionWithBody(Vector2 tilePos);
 
 
 //------------------------------------------------------------------------------------
@@ -113,7 +113,7 @@ static void DrawGame(void);
 //------------------------------------------------------------------------------------
 int main(void)
 {
-    InitWindow(screenWidth, screenHeight, "raylib snakebird (Map Objects & Collisions)");
+    InitWindow(screenWidth, screenHeight, "raylib snakebird");
     InitGame();
     SetTargetFPS(10); 
 
@@ -164,6 +164,33 @@ void InitGame(void)
             }
         }
     }
+}
+
+bool IsSolid(Vector2 tilePos) {
+    //Platform Collision
+    if (tilePos.x < 0 || tilePos.x >= GRID_WIDTH || 
+        tilePos.y < 0 || tilePos.y >= GRID_HEIGHT || 
+        MAP[(int)tilePos.y][(int)tilePos.x] == '#') {
+        return true;
+    }
+
+    //Food Collision
+    for (int i = 0; i < foodCount; i++) {
+        if (food[i].active && food[i].position.x == tilePos.x && food[i].position.y == tilePos.y) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool CheckCollisionWithBody(Vector2 tilePos) {
+    for (int i = 0; i < player.length; i++) {
+        if (player.body[i].position.x == tilePos.x && player.body[i].position.y == tilePos.y) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void DrawGame(void)
