@@ -25,6 +25,35 @@
 ********************************************************************************************/
 
 #include "raylib.h"
+//----------------------------------------------------------------------------------
+// Some Defines
+//----------------------------------------------------------------------------------
+
+#define SQUARE_SIZE 30
+#define MAX_BODY 50
+
+//----------------------------------------------------------------------------------
+// Types and Structures Definition
+//----------------------------------------------------------------------------------
+
+typedef struct Segment {
+    Vector2 position;
+    Vector2 size;
+} Segment;
+
+typedef struct Snake {
+    Segment body[MAX_BODY];
+    int lenght;
+    Color color;
+} Snake;
+
+typedef struct Food {
+    Vector2 position;
+    Vector2 size;
+    bool active;
+    Color color;
+} Food;
+
 //------------------------------------------------------------------------------------
 // Program main entry point
 //------------------------------------------------------------------------------------
@@ -35,7 +64,7 @@ int main(void)
     const int screenWidth = 800;
     const int screenHeight = 450;
 
-    InitWindow(screenWidth, screenHeight, "raylib test");
+    InitWindow(screenWidth, screenHeight, "raylib snakebird");
     
     SetTargetFPS(60);               // Set our game to run at 60 frames-per-second
     //--------------------------------------------------------------------------------------
