@@ -86,7 +86,7 @@ const char* MAP[] = {
     "#                       #",
     "#                       #",
     "#                       #",
-    "#                       #",
+    "#        FF             #",
     "#     #####     F       #", 
     "#     #   # F #####     #",
     "#           F # # #     #",
@@ -102,7 +102,7 @@ const char* MAP[] = {
 // Module Functions Declaration (local)
 //------------------------------------------------------------------------------------
 static void InitGame(void);
-//static void UpdateGame(void);
+static void UpdateGame(void);
 static void DrawGame(void);
 static bool IsSolid(Vector2 tilePos);
 static bool CheckCollisionWithBody(Vector2 tilePos);
@@ -119,7 +119,7 @@ int main(void)
 
     while (!WindowShouldClose())
     {
-        //UpdateGame();
+        UpdateGame();
         DrawGame();
     }
 
@@ -141,7 +141,7 @@ void InitGame(void)
     player.color = DARKGREEN;
 
     int startX = 7;
-    int startY = 4;
+    int startY = 3;
     player.body[0].position = (Vector2){(float)startX, (float)startY};
     player.body[0].size = (Vector2){ TILE_SIZE, TILE_SIZE };
 
@@ -166,31 +166,142 @@ void InitGame(void)
     }
 }
 
+
 bool IsSolid(Vector2 tilePos) {
-    //Platform Collision
     if (tilePos.x < 0 || tilePos.x >= GRID_WIDTH || 
         tilePos.y < 0 || tilePos.y >= GRID_HEIGHT || 
         MAP[(int)tilePos.y][(int)tilePos.x] == '#') {
         return true;
     }
+    return false;
+}
 
-    //Food Collision
+// Keep CheckCollisionWithFood separate for eating logic
+bool CheckCollisionWithBody(Vector2 tilePos) {
     for (int i = 0; i < foodCount; i++) {
         if (food[i].active && food[i].position.x == tilePos.x && food[i].position.y == tilePos.y) {
             return true;
         }
     }
-
     return false;
 }
 
-bool CheckCollisionWithBody(Vector2 tilePos) {
-    for (int i = 0; i < player.length; i++) {
-        if (player.body[i].position.x == tilePos.x && player.body[i].position.y == tilePos.y) {
-            return true;
+void UpdateGame(void)
+{
+    //Win or Game Over
+    if (gameOver && exitReached)
+    {
+         if (IsKeyPressed(KEY_ENTER)) InitGame();
+    }
+    else if (gameOver)
+    {
+        if (IsKeyPressed(KEY_ENTER)) InitGame();
+    }
+    else
+    {
+        if (IsKeyPressed('P')) pause = !pause;
+
+        if (!pause)
+        {
+            //Gravity
+            bool isFalling = false;
+            for (int i = 0; i < player.length; i++)
+            {
+                Vector2 posBelow = {player.body[i].position.x, player.body[i].position.y + 1};
+                
+                if (!IsSolid(posBelow) && !CheckCollisionWithBody(posBelow)) 
+                {
+                    isFalling = true;
+                    break; 
+                }
+            }
+
+            //Movement
+            Vector2 desiredDirection = {0, 0};
+            
+            if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) desiredDirection = (Vector2){ 1, 0 };
+            else if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) desiredDirection = (Vector2){ -1, 0 };
+            else if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) desiredDirection = (Vector2){ 0, -1 };
+            else if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) desiredDirection = (Vector2){ 0, 1 };
+
+            // --------------------------------------------------
+            // Gravity vs Input
+            // --------------------------------------------------
+
+            Vector2 movementThisTurn = {0, 0};
+
+            if (isFalling)
+            {
+                movementThisTurn = (Vector2){0, 1};
+            }
+            else
+            {
+                movementThisTurn = desiredDirection;
+            }
+
+            if (movementThisTurn.x != 0 || movementThisTurn.y != 0)
+            {
+                Vector2 prevPos[MAX_BODY];
+                for (int i = 0; i < player.length; i++) prevPos[i] = player.body[i].position;
+
+                Vector2 nextHeadPos = {player.body[0].position.x + movementThisTurn.x, player.body[0].position.y + movementThisTurn.y};
+
+                //Check collision before moving
+                bool collisionWithBody = false;
+                for(int i = 1; i < player.length; i++) {
+                    if(player.body[i].position.x == nextHeadPos.x && player.body[i].position.y == nextHeadPos.y) {
+                        collisionWithBody = true;
+                        break;
+                    }
+                }
+                
+
+                if (IsSolid(nextHeadPos) || collisionWithBody) 
+                {
+                    //Do nothing, this cancels movement
+                }
+                else
+                {
+                    //Move all segments
+                    for (int i = 1; i < player.length; i++) {
+                        player.body[i].position = prevPos[i-1];
+                    }
+                    player.body[0].position = nextHeadPos;
+                    
+                    //Food
+                    for (int i = 0; i < foodCount; i++) {
+                        if (food[i].active && player.body[0].position.x == food[i].position.x &&
+                            player.body[0].position.y == food[i].position.y)
+                        {
+                            if (player.length < MAX_BODY)
+                            {
+                                player.body[player.length].position = prevPos[player.length - 1]; 
+                                player.body[player.length].size = (Vector2){TILE_SIZE, TILE_SIZE};
+                                player.length += 1;
+                            }
+                            food[i].active = false; 
+                            break; 
+                        }
+                    }
+
+                    // Win
+                    int remainingFood = 0;
+                    for (int i = 0; i < foodCount; i++) {
+                        if (food[i].active) {
+                            remainingFood++;
+                        }
+                    }
+
+                    if (remainingFood == 0 && player.body[0].position.x == exitPosition.x && 
+                        player.body[0].position.y == exitPosition.y)
+                    {
+                       gameOver = true;
+                       exitReached = true;
+                    }
+                }
+            }
         }
     }
-    return false;
 }
 
 void DrawGame(void)
