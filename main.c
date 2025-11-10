@@ -205,20 +205,11 @@ void UpdateGame(void)
         {
             //Gravity
             bool isFalling = false;
-            for (int i = 0; i < player.length; i++)
-            {
-                Vector2 posBelow = {player.body[i].position.x, player.body[i].position.y + 1};
-                
-                if (!IsSolid(posBelow) && !CheckCollisionWithBody(posBelow)) 
-                {
-                    isFalling = true;
-                    break; 
-                }
-            }
-
+            Vector2 posBelow = {player.body[player.length-1].position.x, player.body[player.length-1].position.y + 1};
+            if (!IsSolid(posBelow) && !CheckCollisionWithBody(posBelow)) isFalling = true;
+            
             //Movement
             Vector2 desiredDirection = {0, 0};
-            
             if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) desiredDirection = (Vector2){ 1, 0 };
             else if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) desiredDirection = (Vector2){ -1, 0 };
             else if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) desiredDirection = (Vector2){ 0, -1 };
@@ -230,13 +221,13 @@ void UpdateGame(void)
 
             Vector2 movementThisTurn = {0, 0};
 
-            if (isFalling)
+            if (!isFalling)
             {
-                movementThisTurn = (Vector2){0, 1};
+                movementThisTurn = desiredDirection;
             }
             else
             {
-                movementThisTurn = desiredDirection;
+                movementThisTurn = (Vector2){0, 1};
             }
 
             if (movementThisTurn.x != 0 || movementThisTurn.y != 0)
