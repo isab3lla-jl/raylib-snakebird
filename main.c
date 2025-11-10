@@ -74,11 +74,13 @@ static Food food[MAX_FOOD] = { 0 };
 static int foodCount = 0;
 static Platform platforms[MAX_PLATFORMS] = { 0 };
 static int platformCount = 0;
-static Vector2 exitPosition = { 0, 0 }; 
-static bool exitReached = false;       
+static Vector2 exitPosition = { 0, 0 };      
 
 static bool gameOver = false;
 static bool pause = false;
+static bool gravityEnabled = false;
+static bool exitActive = false;
+static bool exitReached = false;  
 static bool allowMove = false;  
 
 const char* MAP[] = {
@@ -106,6 +108,7 @@ static void UpdateGame(void);
 static void DrawGame(void);
 static bool IsSolid(Vector2 tilePos);
 static bool CheckCollisionWithBody(Vector2 tilePos);
+void applyGravity(char board[GRID_WIDTH][GRID_HEIGHT]);
 
 
 //------------------------------------------------------------------------------------
@@ -135,13 +138,15 @@ void InitGame(void)
 {
     gameOver = false;
     pause = false;
-    exitReached = false; 
+    exitReached = false;
+    exitActive = false;
+    gravityEnabled = false; 
     allowMove = true;
     player.length = 1;
     player.color = DARKGREEN;
 
     int startX = 7;
-    int startY = 3;
+    int startY = 4;
     player.body[0].position = (Vector2){(float)startX, (float)startY};
     player.body[0].size = (Vector2){ TILE_SIZE, TILE_SIZE };
 
@@ -186,23 +191,35 @@ bool CheckCollisionWithBody(Vector2 tilePos) {
     return false;
 }
 
+void applyGravity(char board[GRID_WIDTH][GRID_HEIGHT]) {
+    for (int col = 0; col < GRID_HEIGHT; col++) {
+        for (int row = GRID_WIDTH - 1; row > 0; row--) {
+            if (board[row][col] == ' ') { // Empty space
+                for (int i = row - 1; i >= 0; i--) {
+                    if (board[i][col] != ' ') { // Found a piece above
+                        board[row][col] = board[i][col]; // Move the piece down
+                        board[i][col] = ' '; // Clear the original spot
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
 void UpdateGame(void)
 {
     //Win or Game Over
-    if (gameOver && exitReached)
-    {
+    if (gameOver && exitReached) {
          if (IsKeyPressed(KEY_ENTER)) InitGame();
     }
-    else if (gameOver)
-    {
+    else if (gameOver) {
         if (IsKeyPressed(KEY_ENTER)) InitGame();
     }
-    else
-    {
+    else {
         if (IsKeyPressed('P')) pause = !pause;
 
-        if (!pause)
-        {
+        if (!pause) {
             //Gravity
             bool isFalling = false;
             Vector2 posBelow = {player.body[player.length-1].position.x, player.body[player.length-1].position.y + 1};
@@ -219,23 +236,20 @@ void UpdateGame(void)
             // Gravity vs Input
             // --------------------------------------------------
 
-            Vector2 movementThisTurn = {0, 0};
+            Vector2 playerMovement = {0, 0};
 
-            if (!isFalling)
-            {
-                movementThisTurn = desiredDirection;
+            if (!isFalling) {
+                playerMovement = desiredDirection;
             }
-            else
-            {
-                movementThisTurn = (Vector2){0, 1};
+            else{
+                gravityEnabled = true;
             }
 
-            if (movementThisTurn.x != 0 || movementThisTurn.y != 0)
-            {
+            if (playerMovement.x != 0 || playerMovement.y != 0) {
                 Vector2 prevPos[MAX_BODY];
                 for (int i = 0; i < player.length; i++) prevPos[i] = player.body[i].position;
 
-                Vector2 nextHeadPos = {player.body[0].position.x + movementThisTurn.x, player.body[0].position.y + movementThisTurn.y};
+                Vector2 nextHeadPos = {player.body[0].position.x + playerMovement.x, player.body[0].position.y + playerMovement.y};
 
                 //Check collision before moving
                 bool collisionWithBody = false;
@@ -244,11 +258,9 @@ void UpdateGame(void)
                         collisionWithBody = true;
                         break;
                     }
-                }
-                
+                }                
 
-                if (IsSolid(nextHeadPos) || collisionWithBody) 
-                {
+                if (IsSolid(nextHeadPos) || collisionWithBody) {
                     //Do nothing, this cancels movement
                 }
                 else
@@ -258,14 +270,13 @@ void UpdateGame(void)
                         player.body[i].position = prevPos[i-1];
                     }
                     player.body[0].position = nextHeadPos;
+                    if (gravityEnabled) applyGravity(MAP);
                     
                     //Food
                     for (int i = 0; i < foodCount; i++) {
                         if (food[i].active && player.body[0].position.x == food[i].position.x &&
-                            player.body[0].position.y == food[i].position.y)
-                        {
-                            if (player.length < MAX_BODY)
-                            {
+                            player.body[0].position.y == food[i].position.y) {
+                            if (player.length < MAX_BODY) {
                                 player.body[player.length].position = prevPos[player.length - 1]; 
                                 player.body[player.length].size = (Vector2){TILE_SIZE, TILE_SIZE};
                                 player.length += 1;
@@ -284,8 +295,7 @@ void UpdateGame(void)
                     }
 
                     if (remainingFood == 0 && player.body[0].position.x == exitPosition.x && 
-                        player.body[0].position.y == exitPosition.y)
-                    {
+                        player.body[0].position.y == exitPosition.y) {
                        gameOver = true;
                        exitReached = true;
                     }
@@ -306,7 +316,7 @@ void DrawGame(void)
     }
 
     //Draw Food
-    for (int i = 0; i < foodCount; i++){
+    for (int i = 0; i < foodCount; i++) {
         if (food[i].active)
         {
              Vector2 drawPos = {
@@ -325,8 +335,7 @@ void DrawGame(void)
     DrawCircleV(exitDrawPos, TILE_SIZE/2.0f, DARKGRAY);
 
     //Draw Snakebird
-    for (int i = 0; i < player.length; i++)
-    {
+    for (int i = 0; i < player.length; i++) {
         Vector2 drawPos = {
             player.body[i].position.x * TILE_SIZE,
             player.body[i].position.y * TILE_SIZE
@@ -340,14 +349,11 @@ void DrawGame(void)
 
     if (pause) DrawText("GAME PAUSED", screenWidth/2 - MeasureText("GAME PAUSED", 40)/2, screenHeight/2 - 40, 40, GRAY);
 
-    if (gameOver)
-    {
-        if (exitReached)
-        {
+    if (gameOver) {
+        if (exitReached) {
             DrawText("LEVEL COMPLETE!", screenWidth/2 - MeasureText("LEVEL COMPLETE!", 40)/2, screenHeight/2 - 40, 40, GOLD);
         }
-        else
-        {
+        else {
              DrawText("GAME OVER", screenWidth/2 - MeasureText("GAME OVER", 40)/2, screenHeight/2 - 40, 40, RED);
         }
         DrawText("PRESS [ENTER] TO PLAY AGAIN", screenWidth/2 - MeasureText("PRESS [ENTER] TO PLAY AGAIN", 20)/2, screenHeight/2 + 10, 20, GRAY);
