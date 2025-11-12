@@ -43,7 +43,7 @@
 
 typedef struct Segment {
     Vector2 position; 
-    Vector2 size;     
+    Vector2 size;    
 } Segment;
 
 typedef struct Snakebird {
@@ -78,10 +78,11 @@ static Vector2 exitPosition = { 0, 0 };
 
 static bool gameOver = false;
 static bool pause = false;
-static bool gravityEnabled = false;
 static bool exitActive = false;
 static bool exitReached = false;  
-static bool allowMove = false;  
+static bool allowMove = false;
+static float gravityTimer = 0.0f;
+float gravityDelay = 0.5f;
 
 const char* MAP[] = {
     "#########################",
@@ -107,8 +108,6 @@ static void InitGame(void);
 static void UpdateGame(void);
 static void DrawGame(void);
 static bool IsSolid(Vector2 tilePos);
-static bool CheckCollisionWithBody(Vector2 tilePos);
-void applyGravity(char board[GRID_WIDTH][GRID_HEIGHT]);
 
 
 //------------------------------------------------------------------------------------
@@ -140,7 +139,6 @@ void InitGame(void)
     pause = false;
     exitReached = false;
     exitActive = false;
-    gravityEnabled = false; 
     allowMove = true;
     player.length = 1;
     player.color = DARKGREEN;
@@ -181,35 +179,10 @@ bool IsSolid(Vector2 tilePos) {
     return false;
 }
 
-// Keep CheckCollisionWithFood separate for eating logic
-bool CheckCollisionWithBody(Vector2 tilePos) {
-    for (int i = 0; i < foodCount; i++) {
-        if (food[i].active && food[i].position.x == tilePos.x && food[i].position.y == tilePos.y) {
-            return true;
-        }
-    }
-    return false;
-}
-
-void applyGravity(char board[GRID_WIDTH][GRID_HEIGHT]) {
-    for (int col = 0; col < GRID_HEIGHT; col++) {
-        for (int row = GRID_WIDTH - 1; row > 0; row--) {
-            if (board[row][col] == ' ') { // Empty space
-                for (int i = row - 1; i >= 0; i--) {
-                    if (board[i][col] != ' ') { // Found a piece above
-                        board[row][col] = board[i][col]; // Move the piece down
-                        board[i][col] = ' '; // Clear the original spot
-                        break;
-                    }
-                }
-            }
-        }
-    }
-}
 
 void UpdateGame(void)
 {
-    //Win or Game Over
+    // Win or Game Over
     if (gameOver && exitReached) {
          if (IsKeyPressed(KEY_ENTER)) InitGame();
     }
@@ -220,90 +193,112 @@ void UpdateGame(void)
         if (IsKeyPressed('P')) pause = !pause;
 
         if (!pause) {
-            //Gravity
-            bool isFalling = false;
-            Vector2 posBelow = {player.body[player.length-1].position.x, player.body[player.length-1].position.y + 1};
-            if (!IsSolid(posBelow) && !CheckCollisionWithBody(posBelow)) isFalling = true;
-            
-            //Movement
+            // --------------------------------------------------
+            // Movement (Player Input)
+            // --------------------------------------------------
             Vector2 desiredDirection = {0, 0};
             if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) desiredDirection = (Vector2){ 1, 0 };
             else if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) desiredDirection = (Vector2){ -1, 0 };
             else if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) desiredDirection = (Vector2){ 0, -1 };
             else if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) desiredDirection = (Vector2){ 0, 1 };
 
-            // --------------------------------------------------
-            // Gravity vs Input
-            // --------------------------------------------------
-
-            Vector2 playerMovement = {0, 0};
-
-            if (!isFalling) {
-                playerMovement = desiredDirection;
-            }
-            else{
-                gravityEnabled = true;
-            }
-
-            if (playerMovement.x != 0 || playerMovement.y != 0) {
+            // Apply immediate player input
+            if (desiredDirection.x != 0 || desiredDirection.y != 0) {
                 Vector2 prevPos[MAX_BODY];
                 for (int i = 0; i < player.length; i++) prevPos[i] = player.body[i].position;
 
-                Vector2 nextHeadPos = {player.body[0].position.x + playerMovement.x, player.body[0].position.y + playerMovement.y};
+                Vector2 nextHeadPos = {player.body[0].position.x + desiredDirection.x, player.body[0].position.y + desiredDirection.y};
 
-                //Check collision before moving
+                // Check collision before moving
                 bool collisionWithBody = false;
                 for(int i = 1; i < player.length; i++) {
                     if(player.body[i].position.x == nextHeadPos.x && player.body[i].position.y == nextHeadPos.y) {
                         collisionWithBody = true;
                         break;
                     }
-                }                
-
-                if (IsSolid(nextHeadPos) || collisionWithBody) {
-                    //Do nothing, this cancels movement
                 }
-                else
-                {
-                    //Move all segments
+
+                if (!(IsSolid(nextHeadPos) || collisionWithBody)) {
+                    // Move all segments of the snake
                     for (int i = 1; i < player.length; i++) {
                         player.body[i].position = prevPos[i-1];
                     }
                     player.body[0].position = nextHeadPos;
-                    if (gravityEnabled) applyGravity(MAP);
-                    
-                    //Food
-                    for (int i = 0; i < foodCount; i++) {
-                        if (food[i].active && player.body[0].position.x == food[i].position.x &&
-                            player.body[0].position.y == food[i].position.y) {
-                            if (player.length < MAX_BODY) {
-                                player.body[player.length].position = prevPos[player.length - 1]; 
-                                player.body[player.length].size = (Vector2){TILE_SIZE, TILE_SIZE};
-                                player.length += 1;
-                            }
-                            food[i].active = false; 
-                            break; 
-                        }
-                    }
 
-                    // Win
-                    int remainingFood = 0;
-                    for (int i = 0; i < foodCount; i++) {
-                        if (food[i].active) {
-                            remainingFood++;
-                        }
-                    }
+                    // Food/Win Logic can stay here if the snake immediately eats/wins upon player input move:
+                    // ... (Your original food/win logic was here) ...
+                }
+            }
 
-                    if (remainingFood == 0 && player.body[0].position.x == exitPosition.x && 
-                        player.body[0].position.y == exitPosition.y) {
-                       gameOver = true;
-                       exitReached = true;
+            // --------------------------------------------------
+            // Gravity (Time-based, falls independently of input)
+            // --------------------------------------------------
+            gravityTimer += GetFrameTime(); // Accumulate time every frame
+
+            if (gravityTimer >= gravityDelay) {
+                gravityTimer = 0; // Reset timer
+
+                // Check if the whole snake can move down one step
+                bool canFall = true;
+                Vector2 prevPos[MAX_BODY]; // Need temp storage for movement
+                for (int i = 0; i < player.length; i++)
+                {
+                    prevPos[i] = player.body[i].position;
+                    Vector2 posBelow = {player.body[i].position.x, player.body[i].position.y + 1};
+                    // Check if the space below ANY part of the snake is solid
+                    if (IsSolid(posBelow)) {
+                        canFall = false;
+                        break;
+                    }
+                    // This check for collision with "body" is difficult for a falling snake segment by segment,
+                    // but for a solid "piece", you need to ensure the space below is totally clear.
+                }
+
+                if (canFall) {
+                    // Caer todo el cuerpo (Move the entire snake down one unit)
+                    for (int i = 0; i < player.length; i++) {
+                        player.body[i].position.y++;
                     }
                 }
+            }
+
+            // --------------------------------------------------
+            // Food & Win Logic (Place outside movement blocks to check every frame/update)
+            // --------------------------------------------------
+            // This logic can be checked after any movement (input or gravity) occurs
+
+            // Food
+            for (int i = 0; i < foodCount; i++) {
+                if (food[i].active && player.body[0].position.x == food[i].position.x &&
+                    player.body[0].position.y == food[i].position.y) {
+                    if (player.length < MAX_BODY) {
+                        // Grow the snake (add new segment at the previous tail location)
+                        player.body[player.length].position = player.body[player.length - 1].position;
+                        player.body[player.length].size = (Vector2){TILE_SIZE, TILE_SIZE};
+                        player.length += 1;
+                    }
+                    food[i].active = false;
+                    break;
+                }
+            }
+
+            // Win
+            int remainingFood = 0;
+            for (int i = 0; i < foodCount; i++) {
+                if (food[i].active) {
+                    remainingFood++;
+                }
+            }
+
+            if (remainingFood == 0 && player.body[0].position.x == exitPosition.x &&
+                player.body[0].position.y == exitPosition.y) {
+               gameOver = true;
+               exitReached = true;
             }
         }
     }
 }
+
 
 void DrawGame(void)
 {
