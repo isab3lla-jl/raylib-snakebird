@@ -224,38 +224,31 @@ void UpdateGame(void)
                         player.body[i].position = prevPos[i-1];
                     }
                     player.body[0].position = nextHeadPos;
-
-                    // Food/Win Logic can stay here if the snake immediately eats/wins upon player input move:
-                    // ... (Your original food/win logic was here) ...
                 }
             }
 
             // --------------------------------------------------
-            // Gravity (Time-based, falls independently of input)
+            // Gravity
             // --------------------------------------------------
-            gravityTimer += GetFrameTime(); // Accumulate time every frame
+            gravityTimer += GetFrameTime();
 
             if (gravityTimer >= gravityDelay) {
-                gravityTimer = 0; // Reset timer
+                gravityTimer = 0;
 
-                // Check if the whole snake can move down one step
                 bool canFall = true;
-                Vector2 prevPos[MAX_BODY]; // Need temp storage for movement
+                Vector2 prevPos[MAX_BODY];
                 for (int i = 0; i < player.length; i++)
                 {
                     prevPos[i] = player.body[i].position;
                     Vector2 posBelow = {player.body[i].position.x, player.body[i].position.y + 1};
-                    // Check if the space below ANY part of the snake is solid
+
                     if (IsSolid(posBelow)) {
                         canFall = false;
                         break;
                     }
-                    // This check for collision with "body" is difficult for a falling snake segment by segment,
-                    // but for a solid "piece", you need to ensure the space below is totally clear.
                 }
 
                 if (canFall) {
-                    // Caer todo el cuerpo (Move the entire snake down one unit)
                     for (int i = 0; i < player.length; i++) {
                         player.body[i].position.y++;
                     }
@@ -263,16 +256,13 @@ void UpdateGame(void)
             }
 
             // --------------------------------------------------
-            // Food & Win Logic (Place outside movement blocks to check every frame/update)
+            // Food & Win Logic
             // --------------------------------------------------
-            // This logic can be checked after any movement (input or gravity) occurs
-
             // Food
             for (int i = 0; i < foodCount; i++) {
                 if (food[i].active && player.body[0].position.x == food[i].position.x &&
                     player.body[0].position.y == food[i].position.y) {
                     if (player.length < MAX_BODY) {
-                        // Grow the snake (add new segment at the previous tail location)
                         player.body[player.length].position = player.body[player.length - 1].position;
                         player.body[player.length].size = (Vector2){TILE_SIZE, TILE_SIZE};
                         player.length += 1;
